@@ -1,8 +1,8 @@
 import torch
 import fortepyan as ff
-from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
 from quantizer import MidiQuantizer
+from torch.utils.data import Dataset
 
 
 class MidiDataset(Dataset):
@@ -31,7 +31,7 @@ class MidiDataset(Dataset):
             "pitch": pitch,
             "dstart_bin": dstart_bin,
             "duration_bin": duration_bin,
-            "velocity_bin": velocity_bin
+            "velocity_bin": velocity_bin,
         }
 
         return record

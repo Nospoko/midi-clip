@@ -1,35 +1,35 @@
 import torch
 import torch.nn as nn
-
 from modules.attention_layers import AttentionBlock
 from modules.positional_embedding import SinusoidalPositionalEmbedding1D
 
+
 class VelocityTimeEncoder(nn.Module):
     def __init__(
-            self, 
-            num_embeddings: tuple[int], 
-            embedding_dim: int,
-            output_embedding_dim: int,
-            num_attn_blocks: int = 8, 
-            num_attn_heads: int = 4,
-            attn_ffn_expansion: int = 2,
-            dropout_rate: float = 0.3,
-        ):
+        self,
+        num_embeddings: tuple[int],
+        embedding_dim: int,
+        output_embedding_dim: int,
+        num_attn_blocks: int = 8,
+        num_attn_heads: int = 4,
+        attn_ffn_expansion: int = 2,
+        dropout_rate: float = 0.3,
+    ):
         super().__init__()
 
         # unpacking tuple of num embeddings
         velocity_num_embeddings, dstart_num_embeddings, duration_num_embeddings = num_embeddings
 
         self.velocity_embedding = nn.Embedding(
-            num_embeddings=velocity_num_embeddings, 
+            num_embeddings=velocity_num_embeddings,
             embedding_dim=embedding_dim,
         )
         self.dstart_embedding = nn.Embedding(
-            num_embeddings=dstart_num_embeddings, 
+            num_embeddings=dstart_num_embeddings,
             embedding_dim=embedding_dim,
         )
         self.duration_embedding = nn.Embedding(
-            num_embeddings=duration_num_embeddings, 
+            num_embeddings=duration_num_embeddings,
             embedding_dim=embedding_dim,
         )
 
@@ -40,21 +40,12 @@ class VelocityTimeEncoder(nn.Module):
 
         self.attn_blocks = nn.Sequential(
             *[
-                AttentionBlock(
-                    embedding_dim, 
-                    heads=num_attn_heads,
-                    ffn_expansion=attn_ffn_expansion,
-                    dropout_rate=dropout_rate
-                )
+                AttentionBlock(embedding_dim, heads=num_attn_heads, ffn_expansion=attn_ffn_expansion, dropout_rate=dropout_rate)
                 for _ in range(num_attn_blocks)
             ]
         )
 
-        self.output_embedding = nn.Sequential(
-            nn.SiLU(),
-            nn.Linear(embedding_dim, output_embedding_dim)
-        )
-
+        self.output_embedding = nn.Sequential(nn.SiLU(), nn.Linear(embedding_dim, output_embedding_dim))
 
     def forward(self, velocity: torch.Tensor, dstart: torch.Tensor, duration: torch.Tensor) -> torch.Tensor:
         # embedding, shapes: [batch_size, seq_len] -> [batch_size, seq_len, embedding_dim]

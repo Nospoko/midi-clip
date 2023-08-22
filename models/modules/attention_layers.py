@@ -19,7 +19,7 @@ class MultiHeadAttention(nn.Module):
         self.head_dim = embedding_size // heads
         self.embedding_size = embedding_size
 
-        assert (self.head_dim * heads == embedding_size), "Embedding size needs to be dividable by heads"
+        assert self.head_dim * heads == embedding_size, "Embedding size needs to be dividable by heads"
 
         self.values_proj = nn.Linear(embedding_size, embedding_size, bias=False)
         self.keys_proj = nn.Linear(embedding_size, embedding_size, bias=False)
@@ -27,9 +27,7 @@ class MultiHeadAttention(nn.Module):
 
         self.fc_out = nn.Linear(embedding_size, embedding_size)
 
-
     def forward(self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
-
         # applying linear projections
         q = self.queries_proj(q)
         k = self.keys_proj(k)
@@ -47,7 +45,7 @@ class MultiHeadAttention(nn.Module):
         qk = torch.einsum("n q h d, n k h d -> n h q k", [q, k])
 
         # applying softmax over key dimension to calculate attention scores
-        attn = torch.softmax(qk * (self.embedding_size ** -0.5), dim=3)
+        attn = torch.softmax(qk * (self.embedding_size**-0.5), dim=3)
 
         # shapes
         # attn: (N, heads, query_len, key_len)
@@ -81,12 +79,8 @@ class AttentionBlock(nn.Module):
         self.attention = MultiHeadAttention(embedding_size, heads)
 
         self.ln2 = nn.LayerNorm(embedding_size)
-        self.feed_forward = nn.Sequential(
-            nn.Linear(embedding_size, hidden_dim),
-            nn.SiLU(),
-            nn.Linear(hidden_dim, embedding_size)
-        )
-        
+        self.feed_forward = nn.Sequential(nn.Linear(embedding_size, hidden_dim), nn.SiLU(), nn.Linear(hidden_dim, embedding_size))
+
         self.dropout = nn.Dropout(dropout_rate)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

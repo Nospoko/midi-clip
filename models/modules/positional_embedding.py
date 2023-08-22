@@ -1,5 +1,3 @@
-import math
-
 import torch
 import torch.nn as nn
 
@@ -32,7 +30,7 @@ class SinusoidalPositionalEmbedding1D(nn.Module):
         _, seq_len, _ = x.shape
         position = torch.arange(seq_len, device=x.device).float()
         pos_emb = torch.einsum("i,j->ij", position, self.inv_freq)
-        
+
         pe = torch.zeros(seq_len, self.embedding_size, device=x.device)
         pe[:, 0::2] = torch.sin(pos_emb)
         pe[:, 1::2] = torch.cos(pos_emb)
