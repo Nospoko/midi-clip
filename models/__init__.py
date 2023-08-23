@@ -1,3 +1,3 @@
-from . import pitch_encoder, velocity_time_encoder
+from . import modules, pitch_encoder, velocity_time_encoder
 
-__all__ = ["pitch_encoder", "velocity_time_encoder"]
+__all__ = ["modules", "pitch_encoder", "velocity_time_encoder"]

@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
-from modules.attention_layers import AttentionBlock
-from modules.positional_embedding import SinusoidalPositionalEmbedding1D
+
+from models.modules.attention_layers import AttentionBlock
+from models.modules.positional_embedding import SinusoidalPositionalEmbedding1D
 
 
 class PitchEncoder(nn.Module):
