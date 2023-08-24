@@ -3,12 +3,12 @@ hydra:
     chdir: False
 
 train:
-  dataset_name: "JasiekKaczmarczyk/maestro-quantized" # huggingface dataset
-  batch_size: 256
+  dataset_name: "JasiekKaczmarczyk/giant-midi-quantized" # huggingface dataset
+  batch_size: 1024
   num_workers: 8
   lr: 3e-4
   weight_decay: 0.01
-  num_epochs: 1
+  num_epochs: 5
   temperature: 1.0
   device: "cuda"
   precision: "16-mixed" # not implemented yet
@@ -16,28 +16,28 @@ train:
 
 paths:
   save_ckpt_dir: "checkpoints" # directory where checkpoints will be saved
-  load_ckpt_path: null # if not None, specifies path to model state dict which will be loaded
+  load_ckpt_path: "checkpoints/midi-clip-2023-08-24-10-41.ckpt" # if not None, specifies path to model state dict which will be loaded
   log_dir: "logs"
   hf_repo_id: null # repo id to upload model to huggingface if null model is not uploaded
 
 models:
   pitch_encoder:
-    num_embeddings: 128
-    embedding_dim: 64
-    output_embedding_dim: 64
+    num_embeddings: 88
+    embedding_dim: 128
+    output_embedding_dim: 128
     num_attn_blocks: 8
     num_attn_heads: 4
     attn_ffn_expansion: 2
     dropout_rate: 0.3
   velocity_time_encoder:
     num_embeddings: [7, 7, 7]
-    embedding_dim: 64
-    output_embedding_dim: 64
+    embedding_dim: 128
+    output_embedding_dim: 128
     num_attn_blocks: 8
     num_attn_heads: 4
     attn_ffn_expansion: 2
     dropout_rate: 0.3
 
 logger:
-  run_name: midi-clip-${now:%Y-%m-%d-%H-%M}
-  log_every_n_steps: 50
+  run_name: midi-clip-batch-${train.batch_size}-${now:%Y-%m-%d-%H-%M}
+  log_every_n_steps: 10

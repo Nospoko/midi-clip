@@ -2,8 +2,9 @@ import os
 
 import fortepyan as ff
 from tqdm import tqdm
-from quantizer import MidiQuantizer
 from datasets import Value, Dataset, Features, Sequence, DatasetDict, load_dataset
+
+from data.quantizer import MidiQuantizer
 
 
 def process_dataset(dataset_path: str, split: str, sequence_len: int, quantizer: MidiQuantizer) -> list[dict]:
@@ -46,7 +47,7 @@ def process_record(piece: ff.MidiPiece, sequence_len: int, quantizer: MidiQuanti
     return record
 
 
-if __name__ == "__main__":
+def main():
     # get huggingface token from environment variables
     token = os.environ["HUGGINGFACE_TOKEN"]
 
@@ -88,3 +89,7 @@ if __name__ == "__main__":
 
     # print(dataset["train"])
     dataset.push_to_hub("JasiekKaczmarczyk/maestro-quantized", token=token)
+
+
+if __name__ == "__main__":
+    main()
