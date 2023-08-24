@@ -22,7 +22,7 @@ paths:
 
 models:
   pitch_encoder:
-    num_embeddings: 88
+    num_embeddings: 128
     embedding_dim: 64
     output_embedding_dim: 64
     num_attn_blocks: 4

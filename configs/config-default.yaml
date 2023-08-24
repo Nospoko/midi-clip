@@ -16,13 +16,13 @@ train:
 
 paths:
   save_ckpt_dir: "checkpoints" # directory where checkpoints will be saved
-  load_ckpt_path: "checkpoints/midi-clip-2023-08-24-10-41.ckpt" # if not None, specifies path to model state dict which will be loaded
+  load_ckpt_path: null # if not None, specifies path to model state dict which will be loaded
   log_dir: "logs"
   hf_repo_id: null # repo id to upload model to huggingface if null model is not uploaded
 
 models:
   pitch_encoder:
-    num_embeddings: 88
+    num_embeddings: 128
     embedding_dim: 128
     output_embedding_dim: 128
     num_attn_blocks: 8
