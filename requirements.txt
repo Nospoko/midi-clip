@@ -6,8 +6,8 @@ numpy==1.24.4
 pandas==1.5.3
 pre-commit==3.3.3
 seaborn==0.11.2
+sklearn==0.0.post7
 torch==2.0.1
 torchmetrics==0.11.0
 tqdm==4.64.1
 wandb==0.15.8
-sklearn==0.0.post7

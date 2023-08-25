@@ -2,11 +2,25 @@ import torch
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from torch.utils.data import DataLoader
+from torch.utils.data import Subset, DataLoader
 
-from train import preprocess_dataset
+from data.dataset import MidiDataset
 from models.pitch_encoder import PitchEncoder
 from models.velocity_time_encoder import VelocityTimeEncoder
+
+
+def preprocess_dataset(dataset_name: str, split: str, batch_size: int, num_workers: int, *, query: str = None):
+    ds = MidiDataset(dataset_name, split=split)
+
+    if query:
+        idx_query = [i for i, name in enumerate(ds.data["midi_filename"]) if str.lower(query) in str.lower(name)]
+        ds = Subset(ds, indices=idx_query)
+        batch_size = len(ds) if len(ds) < batch_size else batch_size
+
+    # dataloaders
+    dataloader = DataLoader(ds, batch_size=batch_size, num_workers=num_workers, shuffle=True)
+
+    return dataloader
 
 
 def visualize_embeddings(
@@ -19,8 +33,9 @@ def visualize_embeddings(
     duration_bin = batch["duration_bin"].to(device)
     velocity_bin = batch["velocity_bin"].to(device)
 
-    pitch_embeddings = pitch_encoder(pitch).detach().cpu().numpy()
-    velocity_time_embeddings = velocity_time_encoder(velocity_bin, dstart_bin, duration_bin).detach().cpu().numpy()
+    with torch.no_grad():
+        pitch_embeddings = pitch_encoder(pitch).detach().cpu().numpy()
+        velocity_time_embeddings = velocity_time_encoder(velocity_bin, dstart_bin, duration_bin).detach().cpu().numpy()
 
     kmeans = KMeans(n_clusters=10, n_init="auto")
     pitch_clusters = kmeans.fit(pitch_embeddings).labels_
@@ -38,6 +53,38 @@ def visualize_embeddings(
     axes[0].set_title("Pitch embeddings")
 
     axes[1].scatter(velocity_time_pca[:, 0], velocity_time_pca[:, 1], c=pitch_clusters, cmap="tab20c")
+    axes[1].set_title("Velocity and time embeddings")
+
+    plt.show()
+
+
+def visualize_based_on_query(
+    pitch_encoder: PitchEncoder, velocity_time_encoder: VelocityTimeEncoder, loader: DataLoader, query: str, device: torch.device
+):
+    batch = next(iter(loader))
+
+    pitch = batch["pitch"].to(device)
+    dstart_bin = batch["dstart_bin"].to(device)
+    duration_bin = batch["duration_bin"].to(device)
+    velocity_bin = batch["velocity_bin"].to(device)
+
+    with torch.no_grad():
+        pitch_embeddings = pitch_encoder(pitch).detach().cpu().numpy()
+        velocity_time_embeddings = velocity_time_encoder(velocity_bin, dstart_bin, duration_bin).detach().cpu().numpy()
+
+    # dim reduction
+    pca = PCA(n_components=2)
+    pitch_pca = pca.fit_transform(pitch_embeddings)
+    velocity_time_pca = pca.transform(velocity_time_embeddings)
+
+    # color_palette = np.arange(pitch_pca.shape[0]) / pitch_pca.shape[0]
+
+    fig, axes = plt.subplots(1, 2, figsize=(20, 10))
+    fig.suptitle(f"Query: {query}")
+    axes[0].scatter(pitch_pca[:, 0], pitch_pca[:, 1])
+    axes[0].set_title("Pitch embeddings")
+
+    axes[1].scatter(velocity_time_pca[:, 0], velocity_time_pca[:, 1])
     axes[1].set_title("Velocity and time embeddings")
 
     plt.show()
@@ -74,15 +121,17 @@ def main():
     pitch_encoder.load_state_dict(checkpoint["pitch_encoder"])
     velocity_time_encoder.load_state_dict(checkpoint["velocity_time_encoder"])
 
-    train_dataloader, val_dataloader, test_dataloader = preprocess_dataset(
-        "JasiekKaczmarczyk/giant-midi-quantized", batch_size=1024, num_workers=8
-    )
+    dataset_path = "JasiekKaczmarczyk/giant-midi-quantized"
 
     # visualize embeddings on batch from train set
+    train_dataloader = preprocess_dataset(dataset_path, split="train", batch_size=1024, num_workers=8)
     visualize_embeddings(pitch_encoder, velocity_time_encoder, train_dataloader, device)
 
-    # visualize embeddings on batch from val set
-    visualize_embeddings(pitch_encoder, velocity_time_encoder, val_dataloader, device)
+    # visualize based on query
+    query = "sonata"
+
+    query_dataloader = preprocess_dataset(dataset_path, split="train", batch_size=1024, num_workers=8, query=query)
+    visualize_based_on_query(pitch_encoder, velocity_time_encoder, query_dataloader, query=query, device=device)
 
 
 if __name__ == "__main__":

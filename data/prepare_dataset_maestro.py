@@ -54,8 +54,7 @@ def main():
     # hyperparameters
     sequence_len = 128
 
-    # That's where I'm downloading the LTAFDB data
-    hf_dataset_path = "roszcz/maestro-v1"
+    hf_dataset_path = "roszcz/maestro-v1-sustain"
 
     quantizer = MidiQuantizer(
         n_dstart_bins=7,

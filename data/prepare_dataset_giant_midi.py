@@ -7,18 +7,6 @@ from datasets import Value, Dataset, Features, Sequence, DatasetDict, load_datas
 
 from data.quantizer import MidiQuantizer
 
-# def process_dataset(dataset: Dataset, sequence_len: int, quantizer: MidiQuantizer) -> list[dict]:
-#     processed_records = []
-
-#     for record in tqdm(dataset, total=dataset.num_rows):
-#         # print(record)
-#         piece = ff.MidiPiece.from_huggingface(record)
-#         processed_record = process_record(piece, sequence_len, quantizer)
-
-#         processed_records += processed_record
-
-#     return processed_records
-
 
 def process_record(piece: ff.MidiPiece, sequence_len: int, quantizer: MidiQuantizer) -> list[dict]:
     piece_quantized = quantizer.quantize_piece(piece)
@@ -60,7 +48,6 @@ def main():
     # hyperparameters
     sequence_len = 128
 
-    # That's where I'm downloading the LTAFDB data
     hf_dataset_path = "roszcz/giant-midi-base"
     dataset = load_dataset(hf_dataset_path, split="train")
 
@@ -93,10 +80,6 @@ def main():
             val_records += records
         elif midi_filename in test_filenames:
             test_records += records
-
-    # train_records = process_dataset(hf_dataset_path, split="train", sequence_len=sequence_len, quantizer=quantizer)
-    # val_records = process_dataset(hf_dataset_path, split="validation", sequence_len=sequence_len, quantizer=quantizer)
-    # test_records = process_dataset(hf_dataset_path, split="test", sequence_len=sequence_len, quantizer=quantizer)
 
     # building huggingface dataset
     features = Features(
