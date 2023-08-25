@@ -121,6 +121,9 @@ def main():
     pitch_encoder.load_state_dict(checkpoint["pitch_encoder"])
     velocity_time_encoder.load_state_dict(checkpoint["velocity_time_encoder"])
 
+    pitch_encoder.eval()
+    velocity_time_encoder.eval()
+
     dataset_path = "JasiekKaczmarczyk/giant-midi-quantized"
 
     # visualize embeddings on batch from train set
@@ -128,7 +131,7 @@ def main():
     visualize_embeddings(pitch_encoder, velocity_time_encoder, train_dataloader, device)
 
     # visualize based on query
-    query = "sonata"
+    query = "Chopin"
 
     query_dataloader = preprocess_dataset(dataset_path, split="train", batch_size=1024, num_workers=8, query=query)
     visualize_based_on_query(pitch_encoder, velocity_time_encoder, query_dataloader, query=query, device=device)
