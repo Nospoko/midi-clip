@@ -24,10 +24,11 @@ def preprocess_dataset(dataset_name: str, split: str, batch_size: int, num_worke
 
 
 def visualize_embeddings(
-    pitch_encoder: PitchEncoder, velocity_time_encoder: VelocityTimeEncoder, loader: DataLoader, device: torch.device
+    pitch_encoder: PitchEncoder,
+    velocity_time_encoder: VelocityTimeEncoder,
+    batch: dict,
+    device: torch.device,
 ):
-    batch = next(iter(loader))
-
     pitch = batch["pitch"].to(device)
     dstart_bin = batch["dstart_bin"].to(device)
     duration_bin = batch["duration_bin"].to(device)
@@ -37,7 +38,7 @@ def visualize_embeddings(
         pitch_embeddings = pitch_encoder(pitch).detach().cpu().numpy()
         velocity_time_embeddings = velocity_time_encoder(velocity_bin, dstart_bin, duration_bin).detach().cpu().numpy()
 
-    kmeans = KMeans(n_clusters=10, n_init="auto")
+    kmeans = KMeans(n_clusters=11, n_init="auto")
     pitch_clusters = kmeans.fit(pitch_embeddings).labels_
     # velocity_time_clusters = kmeans.transform(velocity_time_embeddings).labels_
 
