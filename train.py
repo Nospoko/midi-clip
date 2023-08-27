@@ -8,6 +8,7 @@ from tqdm import tqdm
 import torch.optim as optim
 import torch.nn.functional as F
 from omegaconf import OmegaConf
+from datasets import load_dataset
 import torchmetrics.functional as M
 from huggingface_hub import upload_file
 from torch.utils.data import Subset, DataLoader
@@ -27,9 +28,14 @@ def makedir_if_not_exists(dir: str):
 
 
 def preprocess_dataset(dataset_name: str, batch_size: int, num_workers: int, *, overfit_single_batch: bool = False):
-    train_ds = MidiDataset(dataset_name, split="train")
-    val_ds = MidiDataset(dataset_name, split="validation")
-    test_ds = MidiDataset(dataset_name, split="test")
+    train_ds = load_dataset(dataset_name, split="train")
+    train_ds = MidiDataset(train_ds)
+
+    val_ds = load_dataset(dataset_name, split="validation")
+    val_ds = MidiDataset(val_ds)
+
+    test_ds = load_dataset(dataset_name, split="test")
+    test_ds = MidiDataset(test_ds)
 
     if overfit_single_batch:
         train_ds = Subset(train_ds, indices=range(batch_size))

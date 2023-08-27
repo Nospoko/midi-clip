@@ -1,4 +1,5 @@
 import os
+import json
 
 import fortepyan as ff
 from tqdm import tqdm
@@ -7,9 +8,7 @@ from datasets import Value, Dataset, Features, Sequence, DatasetDict, load_datas
 from data.quantizer import MidiQuantizer
 
 
-def process_dataset(dataset_path: str, split: str, sequence_len: int, quantizer: MidiQuantizer) -> list[dict]:
-    dataset = load_dataset(dataset_path, split=split)
-
+def process_dataset(dataset: Dataset, sequence_len: int, quantizer: MidiQuantizer) -> list[dict]:
     processed_records = []
 
     for record in tqdm(dataset, total=dataset.num_rows):
@@ -36,6 +35,7 @@ def process_record(piece: ff.MidiPiece, sequence_len: int, quantizer: MidiQuanti
 
         sequence = {
             "midi_filename": midi_filename,
+            "source": json.dumps(piece.source),
             "pitch": subset.pitch.astype("int16").values.T,
             "dstart_bin": subset.dstart_bin.astype("int16").values.T,
             "duration_bin": subset.duration_bin.astype("int16").values.T,
@@ -54,7 +54,7 @@ def main():
     # hyperparameters
     sequence_len = 128
 
-    hf_dataset_path = "roszcz/maestro-v1-sustain"
+    dataset_path = "roszcz/maestro-v1-sustain"
 
     quantizer = MidiQuantizer(
         n_dstart_bins=7,
@@ -62,14 +62,19 @@ def main():
         n_velocity_bins=7,
     )
 
-    train_records = process_dataset(hf_dataset_path, split="train", sequence_len=sequence_len, quantizer=quantizer)
-    val_records = process_dataset(hf_dataset_path, split="validation", sequence_len=sequence_len, quantizer=quantizer)
-    test_records = process_dataset(hf_dataset_path, split="test", sequence_len=sequence_len, quantizer=quantizer)
+    train_dataset = load_dataset(dataset_path, split="train")
+    val_dataset = load_dataset(dataset_path, split="validation")
+    test_dataset = load_dataset(dataset_path, split="test")
+
+    train_records = process_dataset(train_dataset, sequence_len=sequence_len, quantizer=quantizer)
+    val_records = process_dataset(val_dataset, sequence_len=sequence_len, quantizer=quantizer)
+    test_records = process_dataset(test_dataset, sequence_len=sequence_len, quantizer=quantizer)
 
     # building huggingface dataset
     features = Features(
         {
             "midi_filename": Value(dtype="string"),
+            "source": Value(dtype="string"),
             "pitch": Sequence(feature=Value(dtype="int16"), length=sequence_len),
             "dstart_bin": Sequence(feature=Value(dtype="int16"), length=sequence_len),
             "duration_bin": Sequence(feature=Value(dtype="int16"), length=sequence_len),
@@ -87,7 +92,7 @@ def main():
     )
 
     # print(dataset["train"])
-    dataset.push_to_hub("JasiekKaczmarczyk/maestro-quantized", token=token)
+    dataset.push_to_hub("roszcz/maestro-quantized", token=token)
 
 
 if __name__ == "__main__":
