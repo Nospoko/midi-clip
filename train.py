@@ -8,6 +8,7 @@ from tqdm import tqdm
 import torch.optim as optim
 import torch.nn.functional as F
 from omegaconf import OmegaConf
+from datasets import load_dataset
 import torchmetrics.functional as M
 from huggingface_hub import upload_file
 from torch.utils.data import Subset, DataLoader
@@ -27,9 +28,14 @@ def makedir_if_not_exists(dir: str):
 
 
 def preprocess_dataset(dataset_name: str, batch_size: int, num_workers: int, *, overfit_single_batch: bool = False):
-    train_ds = MidiDataset(dataset_name, split="train")
-    val_ds = MidiDataset(dataset_name, split="validation")
-    test_ds = MidiDataset(dataset_name, split="test")
+    train_ds = load_dataset(dataset_name, split="train")
+    train_ds = MidiDataset(train_ds)
+
+    val_ds = load_dataset(dataset_name, split="validation")
+    val_ds = MidiDataset(val_ds)
+
+    test_ds = load_dataset(dataset_name, split="test")
+    test_ds = MidiDataset(test_ds)
 
     if overfit_single_batch:
         train_ds = Subset(train_ds, indices=range(batch_size))
@@ -119,7 +125,47 @@ def upload_to_huggingface(ckpt_save_path: str, cfg: OmegaConf):
     token = os.environ["HUGGINGFACE_TOKEN"]
 
     # upload model to hugging face
-    upload_file(ckpt_save_path, path_in_repo=f"{cfg.logger.run_name}.ckpt", repo_id=cfg.paths.hf_repo_id, token=token)
+    upload_file(
+        path_or_fileobj=ckpt_save_path,
+        path_in_repo=f"{cfg.logger.run_name}.ckpt",
+        repo_id=cfg.paths.hf_repo_id,
+        token=token,
+    )
+
+
+@torch.no_grad()
+def validation_epoch(
+    velocity_time_encoder: VelocityTimeEncoder,
+    pitch_encoder: PitchEncoder,
+    dataloader: DataLoader,
+    cfg: OmegaConf,
+    device: str,
+) -> dict:
+    pitch_encoder.eval()
+    velocity_time_encoder.eval()
+    val_loop = tqdm(enumerate(dataloader), total=len(dataloader))
+    loss_epoch = 0.0
+    acc_epoch = 0.0
+    topk_acc_epoch = 0.0
+
+    for batch_idx, batch in val_loop:
+        # metrics returns loss and additional metrics if specified in step function
+        loss, acc, topk_acc = forward_step(
+            pitch_encoder, velocity_time_encoder, batch, temperature=cfg.train.temperature, device=device
+        )
+
+        val_loop.set_postfix(loss=loss.item())
+
+        loss_epoch += loss.item()
+        acc_epoch += acc
+        topk_acc_epoch += topk_acc
+
+    metrics = {
+        "loss_epoch": loss_epoch / len(dataloader),
+        "accuracy_epoch": acc_epoch / len(dataloader),
+        "topk_accuracy_epoch": topk_acc_epoch / len(dataloader),
+    }
+    return metrics
 
 
 @hydra.main(config_path="configs", config_name="config-default", version_base="1.3.2")
@@ -131,6 +177,14 @@ def train(cfg: OmegaConf):
     # dataset
     train_dataloader, val_dataloader, _ = preprocess_dataset(
         dataset_name=cfg.train.dataset_name,
+        batch_size=cfg.train.batch_size,
+        num_workers=cfg.train.num_workers,
+        overfit_single_batch=cfg.train.overfit_single_batch,
+    )
+
+    # validate on quantized maestro
+    _, maestro_test, _ = preprocess_dataset(
+        dataset_name="JasiekKaczmarczyk/maestro-quantized",
         batch_size=cfg.train.batch_size,
         num_workers=cfg.train.num_workers,
         overfit_single_batch=cfg.train.overfit_single_batch,
@@ -217,85 +271,41 @@ def train(cfg: OmegaConf):
                 # save model and optimizer states
                 save_checkpoint(pitch_encoder, velocity_time_encoder, optimizer, cfg, save_path=save_path)
 
-        wandb.log(
-            {
-                "train/loss_epoch": loss_epoch / len(train_dataloader),
-                "train/accuracy_epoch": acc_epoch / len(train_dataloader),
-                "train/topk_accuracy_epoch": topk_acc_epoch / len(train_dataloader),
-            },
-            step=step_count,
-        )
+        training_metrics = {
+            "train/loss_epoch": loss_epoch / len(train_dataloader),
+            "train/accuracy_epoch": acc_epoch / len(train_dataloader),
+            "train/topk_accuracy_epoch": topk_acc_epoch / len(train_dataloader),
+        }
 
-        # val epoch
+        # val epochs
         pitch_encoder.eval()
         velocity_time_encoder.eval()
-        val_loop = tqdm(enumerate(val_dataloader), total=len(val_dataloader))
-        loss_epoch = 0.0
-        acc_epoch = 0.0
-        topk_acc_epoch = 0.0
 
-        with torch.no_grad():
-            for batch_idx, batch in val_loop:
-                # metrics returns loss and additional metrics if specified in step function
-                loss, acc, topk_acc = forward_step(
-                    pitch_encoder, velocity_time_encoder, batch, temperature=cfg.train.temperature, device=device
-                )
+        # Test on a split from a training dataset ...
+        validation_metrics = validation_epoch(
+            pitch_encoder=pitch_encoder,
+            velocity_time_encoder=velocity_time_encoder,
+            dataloader=val_dataloader,
+            device=device,
+            cfg=cfg,
+        )
+        validation_metrics = {"val/" + key: value for key, value in validation_metrics.items()}
 
-                val_loop.set_postfix(loss=loss.item())
+        # ... and on maestro
+        test_metrics = validation_epoch(
+            pitch_encoder=pitch_encoder,
+            velocity_time_encoder=velocity_time_encoder,
+            dataloader=maestro_test,
+            device=device,
+            cfg=cfg,
+        )
+        test_metrics = {"maestro/" + key: value for key, value in test_metrics.items()}
 
-                loss_epoch += loss.item()
-                acc_epoch += acc
-                topk_acc_epoch += topk_acc
-
-            wandb.log(
-                {
-                    "val/loss_epoch": loss_epoch / len(val_dataloader),
-                    "val/accuracy_epoch": acc_epoch / len(val_dataloader),
-                    "val/topk_accuracy_epoch": topk_acc_epoch / len(val_dataloader),
-                },
-                step=step_count,
-            )
+        metrics = test_metrics | validation_metrics | training_metrics
+        wandb.log(metrics, step=step_count)
 
     # save model at the end of training
     save_checkpoint(pitch_encoder, velocity_time_encoder, optimizer, cfg, save_path=save_path)
-
-    # validate on quantized maestro
-    _, val_dataloader, _ = preprocess_dataset(
-        dataset_name="JasiekKaczmarczyk/maestro-quantized",
-        batch_size=cfg.train.batch_size,
-        num_workers=cfg.train.num_workers,
-        overfit_single_batch=cfg.train.overfit_single_batch,
-    )
-
-    # val epoch
-    pitch_encoder.eval()
-    velocity_time_encoder.eval()
-    val_loop = tqdm(enumerate(val_dataloader), total=len(val_dataloader))
-    loss_epoch = 0.0
-    acc_epoch = 0.0
-    topk_acc_epoch = 0.0
-
-    with torch.no_grad():
-        for batch_idx, batch in val_loop:
-            # metrics returns loss and additional metrics if specified in step function
-            loss, acc, topk_acc = forward_step(
-                pitch_encoder, velocity_time_encoder, batch, temperature=cfg.train.temperature, device=device
-            )
-
-            val_loop.set_postfix(loss=loss.item())
-
-            loss_epoch += loss.item()
-            acc_epoch += acc
-            topk_acc_epoch += topk_acc
-
-        wandb.log(
-            {
-                "val/maestro_loss_epoch": loss_epoch / len(val_dataloader),
-                "val/maestro_accuracy_epoch": acc_epoch / len(val_dataloader),
-                "val/maestro_topk_accuracy_epoch": topk_acc_epoch / len(val_dataloader),
-            },
-            step=step_count,
-        )
 
     wandb.finish()
 

@@ -1,19 +1,19 @@
 import torch
-from datasets import load_dataset
 from torch.utils.data import Dataset
+from datasets import load_dataset, Dataset as HFDataset
 
 
 class MidiDataset(Dataset):
-    def __init__(self, huggingface_path: str, split: str = "train"):
+    def __init__(self, dataset: HFDataset):
         super().__init__()
 
-        self.data = load_dataset(huggingface_path, split=split)
+        self.dataset = dataset
 
     def __len__(self):
-        return len(self.data)
+        return len(self.dataset)
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
-        sequence = self.data[index]
+        sequence = self.dataset[index]
 
         # wrap signal and mask to torch.Tensor
         pitch = torch.tensor(sequence["pitch"], dtype=torch.long)
@@ -28,5 +28,9 @@ class MidiDataset(Dataset):
             "duration_bin": duration_bin,
             "velocity_bin": velocity_bin,
         }
+
+        # I have different version locally than in HF
+        if "source" in sequence.keys():
+            record.update({"source": sequence["source"]})
 
         return record
