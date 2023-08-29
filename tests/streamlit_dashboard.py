@@ -21,7 +21,7 @@ def preprocess_dataset(dataset: Dataset, batch_size: int, num_workers: int, *, q
     ds = MidiDataset(dataset)
 
     if query:
-        idx_query = [i for i, name in enumerate(ds.dataset["midi_filename"]) if str.lower(query) in str.lower(name)]
+        idx_query = [i for i, name in enumerate(ds.dataset["source"]) if str.lower(query) in str.lower(name)]
         ds = Subset(ds, indices=idx_query)
         batch_size = len(ds) if len(ds) < batch_size else batch_size
 
@@ -112,6 +112,7 @@ def embeddings_based_on_query(
     velocity_time_embeddings /= np.linalg.norm(velocity_time_embeddings, axis=1, keepdims=True)
 
     pitch_idx, velocity_time_idx = find_closest_embeddings(pitch_embeddings, velocity_time_embeddings)
+
     visualize_embeddings(
         pitch_embeddings,
         velocity_time_embeddings,
@@ -208,14 +209,14 @@ def main():
     pitch_encoder.eval()
     velocity_time_encoder.eval()
 
-    dataset_path = "JasiekKaczmarczyk/giant-midi-quantized"
+    dataset_path = "roszcz/maestro-quantized"
 
     col1, col2 = st.columns(2)
 
     with col1:
-        query_pitch = st.text_area(label="Query value for pitch embeddings")
+        query_pitch = st.text_area(label="Query value for pitch embeddings", value="Liszt")
     with col2:
-        query_velocity_time = st.text_area(label="Query value for velocity and time embeddings")
+        query_velocity_time = st.text_area(label="Query value for velocity and time embeddings", value="Chopin")
 
     pitch_record, velocity_time_record = embeddings_based_on_query(
         pitch_encoder,
