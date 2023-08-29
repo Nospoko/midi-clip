@@ -3,3 +3,5 @@ checkpoints
 onnx-models
 outputs
 logs
+tmp
+screenshots

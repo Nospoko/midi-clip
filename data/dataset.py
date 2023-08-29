@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import Dataset
-from datasets import load_dataset, Dataset as HFDataset
+from datasets import Dataset as HFDataset
 
 
 class MidiDataset(Dataset):
