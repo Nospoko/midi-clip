@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 from models.modules.attention_layers import AttentionBlock
-from models.modules.positional_embedding import SinusoidalPositionalEmbedding1D
+from models.modules.positional_embedding import SinusoidalPositionEmbeddings
 
 
 class VelocityTimeEncoder(nn.Module):
@@ -37,7 +37,7 @@ class VelocityTimeEncoder(nn.Module):
         # projection for concatenated embeddings to embedding_dim
         self.embedding_proj = nn.Linear(3 * embedding_dim, embedding_dim)
 
-        self.positional_embedding = SinusoidalPositionalEmbedding1D(embedding_dim)
+        self.positional_embedding = SinusoidalPositionEmbeddings(embedding_dim)
 
         self.attn_blocks = nn.Sequential(
             *[
@@ -59,7 +59,9 @@ class VelocityTimeEncoder(nn.Module):
         x = self.embedding_proj(x)
 
         # positional embedding
-        pe = self.positional_embedding(x)
+        positions = torch.arange(velocity.shape[1], device=velocity.device, dtype=torch.float32)
+        # shape: [batch_size, seq_len, embedding_dim]
+        pe = self.positional_embedding(positions)[None, :, :]
 
         # combining embeddings
         x = x + pe

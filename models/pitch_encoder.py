@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 from models.modules.attention_layers import AttentionBlock
-from models.modules.positional_embedding import SinusoidalPositionalEmbedding1D
+from models.modules.positional_embedding import SinusoidalPositionEmbeddings
 
 
 class PitchEncoder(nn.Module):
@@ -22,7 +22,7 @@ class PitchEncoder(nn.Module):
             num_embeddings=num_embeddings,
             embedding_dim=embedding_dim,
         )
-        self.positional_embedding = SinusoidalPositionalEmbedding1D(embedding_dim)
+        self.positional_embedding = SinusoidalPositionEmbeddings(embedding_dim)
 
         self.attn_blocks = nn.Sequential(
             *[
@@ -37,7 +37,9 @@ class PitchEncoder(nn.Module):
         # embedding, shapes: [batch_size, seq_len] -> [batch_size, seq_len, embedding_dim]
         x = self.embedding(x)
         # positional embedding
-        pe = self.positional_embedding(x)
+        positions = torch.arange(x.shape[1], device=x.device, dtype=torch.float32)
+        # shape: [batch_size, seq_len, embedding_dim]
+        pe = self.positional_embedding(positions)[None, :, :]
 
         # combining embeddings
         x = x + pe
