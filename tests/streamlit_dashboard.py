@@ -10,6 +10,7 @@ from sklearn.decomposition import PCA
 from datasets import Dataset, load_dataset
 from torch.utils.data import Subset, DataLoader
 from fortepyan.audio import render as render_audio
+from huggingface_hub.file_download import hf_hub_download
 
 from data.dataset import MidiDataset
 from data.quantizer import MidiQuantizer
@@ -176,7 +177,9 @@ def render_midi_to_mp3(pitch_record: dict, velocity_time_record: dict) -> dict:
 
 
 def main():
-    checkpoint = torch.load("checkpoints/midi-clip-batch-1024-2023-08-24-11-10.ckpt")
+    checkpoint = torch.load(
+        hf_hub_download("roszcz/midi-clip", filename="midi-clip-batch-256-2023-08-27-10-14.ckpt")
+    )
 
     cfg = checkpoint["config"]
     device = cfg.train.device
@@ -192,7 +195,6 @@ def main():
         dropout_rate=cfg.models.pitch_encoder.dropout_rate,
     ).to(device)
 
-    # forward diffusion
     velocity_time_encoder = VelocityTimeEncoder(
         num_embeddings=cfg.models.velocity_time_encoder.num_embeddings,
         embedding_dim=cfg.models.velocity_time_encoder.embedding_dim,
