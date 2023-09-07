@@ -12,7 +12,7 @@ class MidiDataset(Dataset):
     def __len__(self):
         return len(self.dataset)
 
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, index: int) -> dict:
         sequence = self.dataset[index]
 
         # wrap signal and mask to torch.Tensor

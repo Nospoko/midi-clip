@@ -53,9 +53,9 @@ def preprocess_dataset(dataset_name: str | list[str], batch_size: int, num_worke
         val_ds = load_dataset(dataset_name, split="validation", use_auth_token=hf_token)
         test_ds = load_dataset(dataset_name, split="test", use_auth_token=hf_token)
 
-    train_ds = MidiDataset(train_ds, augmentation_percentage=0.8)
-    val_ds = MidiDataset(val_ds, augmentation_percentage=0.0)
-    test_ds = MidiDataset(test_ds, augmentation_percentage=0.0)
+    train_ds = MidiDataset(train_ds)
+    val_ds = MidiDataset(val_ds)
+    test_ds = MidiDataset(test_ds)
 
     if overfit_single_batch:
         train_ds = Subset(train_ds, indices=range(batch_size))
