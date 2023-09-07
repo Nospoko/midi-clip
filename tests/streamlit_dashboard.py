@@ -177,9 +177,7 @@ def render_midi_to_mp3(pitch_record: dict, velocity_time_record: dict) -> dict:
 
 
 def main():
-    checkpoint = torch.load(
-        hf_hub_download("roszcz/midi-clip", filename="midi-clip-batch-256-2023-08-27-10-14.ckpt")
-    )
+    checkpoint = torch.load(hf_hub_download("roszcz/midi-clip", filename="midi-clip-batch-256-2023-08-27-10-14.ckpt"))
 
     cfg = checkpoint["config"]
     device = cfg.train.device

@@ -8,10 +8,11 @@ from tqdm import tqdm
 import torch.optim as optim
 import torch.nn.functional as F
 from omegaconf import OmegaConf
-from datasets import load_dataset
 import torchmetrics.functional as M
 from huggingface_hub import upload_file
+from omegaconf.listconfig import ListConfig
 from torch.utils.data import Subset, DataLoader
+from datasets import load_dataset, concatenate_datasets
 
 from data.dataset import MidiDataset
 from models.pitch_encoder import PitchEncoder
@@ -27,15 +28,34 @@ def makedir_if_not_exists(dir: str):
         os.makedirs(dir)
 
 
-def preprocess_dataset(dataset_name: str, batch_size: int, num_workers: int, *, overfit_single_batch: bool = False):
-    train_ds = load_dataset(dataset_name, split="train")
-    train_ds = MidiDataset(train_ds)
+def preprocess_dataset(dataset_name: str | list[str], batch_size: int, num_workers: int, *, overfit_single_batch: bool = False):
+    hf_token = os.environ["HUGGINGFACE_TOKEN"]
 
-    val_ds = load_dataset(dataset_name, split="validation")
-    val_ds = MidiDataset(val_ds)
+    if isinstance(dataset_name, (list, ListConfig)):
+        train_ds = []
+        val_ds = []
+        test_ds = []
 
-    test_ds = load_dataset(dataset_name, split="test")
-    test_ds = MidiDataset(test_ds)
+        for ds_name in dataset_name:
+            tr_ds = load_dataset(ds_name, split="train", use_auth_token=hf_token)
+            v_ds = load_dataset(ds_name, split="validation", use_auth_token=hf_token)
+            t_ds = load_dataset(ds_name, split="test", use_auth_token=hf_token)
+
+            train_ds.append(tr_ds)
+            val_ds.append(v_ds)
+            test_ds.append(t_ds)
+
+        train_ds = concatenate_datasets(train_ds)
+        val_ds = concatenate_datasets(val_ds)
+        test_ds = concatenate_datasets(test_ds)
+    else:
+        train_ds = load_dataset(dataset_name, split="train", use_auth_token=hf_token)
+        val_ds = load_dataset(dataset_name, split="validation", use_auth_token=hf_token)
+        test_ds = load_dataset(dataset_name, split="test", use_auth_token=hf_token)
+
+    train_ds = MidiDataset(train_ds, augmentation_percentage=0.8)
+    val_ds = MidiDataset(val_ds, augmentation_percentage=0.0)
+    test_ds = MidiDataset(test_ds, augmentation_percentage=0.0)
 
     if overfit_single_batch:
         train_ds = Subset(train_ds, indices=range(batch_size))
