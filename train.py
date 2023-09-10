@@ -202,7 +202,12 @@ def train(cfg: OmegaConf):
     )
 
     # logger
-    wandb.init(project="midi-clip", name=cfg.logger.run_name, dir=cfg.paths.log_dir)
+    wandb.init(
+        project="midi-clip",
+        name=cfg.logger.run_name,
+        dir=cfg.paths.log_dir,
+        config=OmegaConf.to_container(cfg, resolve=True),
+    )
 
     device = torch.device(cfg.train.device)
 
