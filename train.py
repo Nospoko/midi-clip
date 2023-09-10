@@ -17,10 +17,6 @@ from data.dataset import MidiDataset
 from models.pitch_encoder import PitchEncoder
 from models.velocity_time_encoder import VelocityTimeEncoder
 
-# from models.reverse_diffusion import Unet
-# from ecg_segmentation_dataset import ECGDataset
-# from models.forward_diffusion import ForwardDiffusion
-
 
 def makedir_if_not_exists(dir: str):
     if not os.path.exists(dir):
