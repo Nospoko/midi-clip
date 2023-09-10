@@ -92,10 +92,21 @@ def forward_step(
     acc = (acc_per_velocity_time + acc_per_pitch) / 2
 
     # top k accuracy, k is 10% of batch size
+    top_k = round(0.1 * batch_size)
     topk_acc_per_velocity_time = M.accuracy(
-        logits, labels, task="multiclass", num_classes=batch_size, top_k=round(0.1 * batch_size)
+        preds=logits,
+        targets=labels,
+        task="multiclass",
+        num_classes=batch_size,
+        top_k=top_k,
     )
-    topk_acc_per_pitch = M.accuracy(logits.t(), labels, task="multiclass", num_classes=batch_size, top_k=round(0.1 * batch_size))
+    topk_acc_per_pitch = M.accuracy(
+        preds=logits.t(),
+        targets=labels,
+        task="multiclass",
+        num_classes=batch_size,
+        top_k=top_k,
+    )
     topk_acc = (topk_acc_per_velocity_time + topk_acc_per_pitch) / 2
 
     return loss, acc, topk_acc
@@ -151,7 +162,11 @@ def validation_epoch(
     for batch_idx, batch in val_loop:
         # metrics returns loss and additional metrics if specified in step function
         loss, acc, topk_acc = forward_step(
-            pitch_encoder, velocity_time_encoder, batch, temperature=cfg.train.temperature, device=device
+            pitch_encoder=pitch_encoder,
+            velocity_time_encoder=velocity_time_encoder,
+            batch=batch,
+            temperature=cfg.train.temperature,
+            device=device,
         )
 
         val_loop.set_postfix(loss=loss.item())
@@ -250,7 +265,11 @@ def train(cfg: OmegaConf):
         for batch_idx, batch in train_loop:
             # metrics returns loss and additional metrics if specified in step function
             loss, acc, topk_acc = forward_step(
-                pitch_encoder, velocity_time_encoder, batch, temperature=cfg.train.temperature, device=device
+                pitch_encoder=pitch_encoder,
+                velocity_time_encoder=velocity_time_encoder,
+                batch=batch,
+                temperature=cfg.train.temperature,
+                device=device,
             )
 
             optimizer.zero_grad()
