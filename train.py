@@ -91,14 +91,14 @@ def forward_step(
     top_k = round(0.1 * batch_size)
     topk_acc_per_velocity_time = M.accuracy(
         preds=logits,
-        targets=labels,
+        target=labels,
         task="multiclass",
         num_classes=batch_size,
         top_k=top_k,
     )
     topk_acc_per_pitch = M.accuracy(
         preds=logits.t(),
-        targets=labels,
+        target=labels,
         task="multiclass",
         num_classes=batch_size,
         top_k=top_k,
