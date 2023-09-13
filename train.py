@@ -8,10 +8,10 @@ from tqdm import tqdm
 import torch.optim as optim
 import torch.nn.functional as F
 from omegaconf import OmegaConf
-from datasets import load_dataset
 import torchmetrics.functional as M
 from huggingface_hub import upload_file
 from torch.utils.data import Subset, DataLoader
+from datasets import load_dataset, concatenate_datasets
 
 from data.dataset import MidiDataset
 from models.pitch_encoder import PitchEncoder
@@ -27,14 +27,28 @@ def makedir_if_not_exists(dir: str):
         os.makedirs(dir)
 
 
-def preprocess_dataset(dataset_name: str, batch_size: int, num_workers: int, *, overfit_single_batch: bool = False):
-    train_ds = load_dataset(dataset_name, split="train")
+def preprocess_dataset(dataset_name: list[str], batch_size: int, num_workers: int, *, overfit_single_batch: bool = False):
+    hf_token = os.environ["HUGGINGFACE_TOKEN"]
+
+    train_ds = []
+    val_ds = []
+    test_ds = []
+
+    for ds_name in dataset_name:
+        tr_ds = load_dataset(ds_name, split="train", use_auth_token=hf_token)
+        v_ds = load_dataset(ds_name, split="validation", use_auth_token=hf_token)
+        t_ds = load_dataset(ds_name, split="test", use_auth_token=hf_token)
+
+        train_ds.append(tr_ds)
+        val_ds.append(v_ds)
+        test_ds.append(t_ds)
+
+    train_ds = concatenate_datasets(train_ds)
+    val_ds = concatenate_datasets(val_ds)
+    test_ds = concatenate_datasets(test_ds)
+
     train_ds = MidiDataset(train_ds)
-
-    val_ds = load_dataset(dataset_name, split="validation")
     val_ds = MidiDataset(val_ds)
-
-    test_ds = load_dataset(dataset_name, split="test")
     test_ds = MidiDataset(test_ds)
 
     if overfit_single_batch:
