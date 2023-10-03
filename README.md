@@ -6,6 +6,52 @@ To run training:
 python train.py --config-name <config>
 ```
 
+# Model blueprints
+
+### CLIP Training
+
+```mermaid
+flowchart TD
+    A[MIDI Sequence] --> B(Pitch)
+    A --> C(Velocity+Time)
+    B --> |encoder| D(pitch embeddings)
+    C --> |encoder| E(vt embeddings)
+    D:::trainable --> F(CLIP LOSS)
+    E:::trainable --> F
+    classDef trainable stroke:teal
+```
+
+### Pitch Encoder
+
+```mermaid
+flowchart TD
+    A[MIDI Sequence] --> B(Pitch)
+    B --> C[nn.Embedding]
+    D[SinusoidalPositionEmbeddings] --> E[+]
+    C --> E
+    E --> |attention blocks| F[embedding]
+    F --> |mean| G[embedding]
+    G --> |output projection| H[output]
+```
+
+### Velocity-Time Encoder
+
+```mermaid
+flowchart TD
+    A[MIDI Sequence] --> |quantization| B(Quantized Piece)
+    B --> C[velocity embedding]
+    B --> D[dstart embedding]
+    B --> E[duration embedding]
+    C --> F[cat embedding]
+    D --> F 
+    E --> F
+    F --> G(linear projection) --> I[embedding]
+    H[SinusoidalPositionEmbeddings] --> I
+    I --> J(attention blocks)
+    J --> K(mean)
+    K --> OUT(output projection)
+```
+
 ### Code Style
 
 This repository uses pre-commit hooks with forced python formatting ([black](https://github.com/psf/black),
