@@ -17,10 +17,6 @@ from data.dataset import MidiDataset
 from models.pitch_encoder import PitchEncoder
 from models.velocity_time_encoder import VelocityTimeEncoder
 
-# from models.reverse_diffusion import Unet
-# from ecg_segmentation_dataset import ECGDataset
-# from models.forward_diffusion import ForwardDiffusion
-
 
 def makedir_if_not_exists(dir: str):
     if not os.path.exists(dir):
@@ -92,10 +88,21 @@ def forward_step(
     acc = (acc_per_velocity_time + acc_per_pitch) / 2
 
     # top k accuracy, k is 10% of batch size
+    top_k = round(0.1 * batch_size)
     topk_acc_per_velocity_time = M.accuracy(
-        logits, labels, task="multiclass", num_classes=batch_size, top_k=round(0.1 * batch_size)
+        preds=logits,
+        target=labels,
+        task="multiclass",
+        num_classes=batch_size,
+        top_k=top_k,
     )
-    topk_acc_per_pitch = M.accuracy(logits.t(), labels, task="multiclass", num_classes=batch_size, top_k=round(0.1 * batch_size))
+    topk_acc_per_pitch = M.accuracy(
+        preds=logits.t(),
+        target=labels,
+        task="multiclass",
+        num_classes=batch_size,
+        top_k=top_k,
+    )
     topk_acc = (topk_acc_per_velocity_time + topk_acc_per_pitch) / 2
 
     return loss, acc, topk_acc
@@ -151,7 +158,11 @@ def validation_epoch(
     for batch_idx, batch in val_loop:
         # metrics returns loss and additional metrics if specified in step function
         loss, acc, topk_acc = forward_step(
-            pitch_encoder, velocity_time_encoder, batch, temperature=cfg.train.temperature, device=device
+            pitch_encoder=pitch_encoder,
+            velocity_time_encoder=velocity_time_encoder,
+            batch=batch,
+            temperature=cfg.train.temperature,
+            device=device,
         )
 
         val_loop.set_postfix(loss=loss.item())
@@ -191,7 +202,12 @@ def train(cfg: OmegaConf):
     )
 
     # logger
-    wandb.init(project="midi-clip", name=cfg.logger.run_name, dir=cfg.paths.log_dir)
+    wandb.init(
+        project="midi-clip",
+        name=cfg.logger.run_name,
+        dir=cfg.paths.log_dir,
+        config=OmegaConf.to_container(cfg, resolve=True),
+    )
 
     device = torch.device(cfg.train.device)
 
@@ -250,7 +266,11 @@ def train(cfg: OmegaConf):
         for batch_idx, batch in train_loop:
             # metrics returns loss and additional metrics if specified in step function
             loss, acc, topk_acc = forward_step(
-                pitch_encoder, velocity_time_encoder, batch, temperature=cfg.train.temperature, device=device
+                pitch_encoder=pitch_encoder,
+                velocity_time_encoder=velocity_time_encoder,
+                batch=batch,
+                temperature=cfg.train.temperature,
+                device=device,
             )
 
             optimizer.zero_grad()

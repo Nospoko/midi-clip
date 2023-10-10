@@ -48,18 +48,18 @@ class VelocityTimeEncoder(nn.Module):
 
         self.output_embedding = nn.Sequential(nn.SiLU(), nn.Linear(embedding_dim, output_embedding_dim))
 
-    def forward(self, velocity: torch.Tensor, dstart: torch.Tensor, duration: torch.Tensor) -> torch.Tensor:
+    def forward(self, velocity_bin: torch.Tensor, dstart_bin: torch.Tensor, duration_bin: torch.Tensor) -> torch.Tensor:
         # embedding, shapes: [batch_size, seq_len] -> [batch_size, seq_len, embedding_dim]
-        velocity = self.velocity_embedding(velocity)
-        dstart = self.dstart_embedding(dstart)
-        duration = self.duration_embedding(duration)
+        velocity_bin = self.velocity_embedding(velocity_bin)
+        dstart_bin = self.dstart_embedding(dstart_bin)
+        duration_bin = self.duration_embedding(duration_bin)
 
         # concatenate embeddings
-        x = torch.cat([velocity, dstart, duration], dim=-1)
+        x = torch.cat([velocity_bin, dstart_bin, duration_bin], dim=-1)
         x = self.embedding_proj(x)
 
         # positional embedding
-        positions = torch.arange(velocity.shape[1], device=velocity.device, dtype=torch.float32)
+        positions = torch.arange(velocity_bin.shape[1], device=velocity_bin.device, dtype=torch.float32)
         # shape: [batch_size, seq_len, embedding_dim]
         pe = self.positional_embedding(positions)[None, :, :]
 
